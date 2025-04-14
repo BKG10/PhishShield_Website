@@ -78,6 +78,9 @@ document.addEventListener('DOMContentLoaded', () => {
         phishingUrls: 0
     };
 
+    // Session-specific history
+    let sessionHistory = [];
+
     checkButton.addEventListener('click', checkUrl);
     urlInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
@@ -157,6 +160,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update UI with results
             displayResult(data, endTime - startTime);
             
+            // Add to session history
+            addToSessionHistory(url, data.isPhishing);
+            
             // Update statistics and history without showing loading
             await Promise.all([
                 updateStatistics(data.isPhishing),
@@ -175,17 +181,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function addToSessionHistory(url, isPhishing) {
+        const timestamp = new Date().toISOString();
+        const historyItem = {
+            url,
+            isPhishing,
+            timestamp
+        };
+        
+        // Add to beginning of array to show newest first
+        sessionHistory.unshift(historyItem);
+        
+        // Keep only last 10 items
+        if (sessionHistory.length > 10) {
+            sessionHistory = sessionHistory.slice(0, 10);
+        }
+        
+        // Update display
+        displayHistory(sessionHistory);
+    }
+
     async function loadHistory() {
         try {
-            const response = await fetch(HISTORY_URL);
-            if (!response.ok) {
-                throw new Error('Failed to load history');
-            }
-            
-            const history = await response.json();
-            // Only show the last 10 scans
-            const recentHistory = history.slice(0, 10);
-            displayHistory(recentHistory);
+            // Display session history instead of fetching from server
+            displayHistory(sessionHistory);
         } catch (error) {
             console.error('Error loading history:', error);
         }
@@ -303,6 +322,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function clearHistory() {
         try {
+            // Clear session history
+            sessionHistory = [];
             historyList.innerHTML = '';
             historyContainer.classList.add('hidden');
             showError('History cleared successfully', 'success');
